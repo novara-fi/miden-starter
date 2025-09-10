@@ -1,0 +1,96 @@
+use.miden::account
+use.std::sys
+
+# A basic program that takes two public inputs (x, y) and two private inputs (a, b) and generates
+# the result as: x*a + y*b, then stores the result in the account storage.
+
+# Define the storage location
+# Storage
+# Slot `0` stands for last computed result
+
+# CONSTANTS for storage slot index
+const.STORAGE_SLOT=0
+
+############################
+#### PUBLIC FUNCTIONS ######
+############################
+
+#! Returns the result of the last calculation
+#! Inputs:  []
+#! Outputs: [result]
+export.get_result
+    push.STORAGE_SLOT
+    # => [index]
+
+    exec.account::get_item
+    # => [count]
+
+    exec.sys::truncate_stack
+    # => []
+end
+
+#! If success:
+#! - Update the storage
+#! 
+#! Advice map input: {0: first input, 1: second input}
+#! Inputs:  [x, y]
+#! Outputs: []
+export.calculate
+    push.0.0.0.0
+    # OS => [FIRST_INPUT_INDEX, x, y]
+    # AS => []
+
+    adv.push_mapval
+    # OS => [x, y]
+    # AS => [ZERO, ZERO, ZERO, a]
+
+    adv_loadw
+    # OS => [ZERO, ZERO, ZERO, a, x, y]
+    # AS => []
+
+    drop drop drop
+    # OS => [a, x, y]
+    # AS => []
+
+    push.1.0.0.0
+    # OS => [SECOND_INPUT_INDEX, a, x, y]
+    # AS => []
+
+    adv.push_mapval
+    # OS => [a, x, y]
+    # AS => [ZERO, ZERO, ZERO, b]
+
+    adv_loadw
+    # OS => [ZERO, ZERO, ZERO, b, a, x, y]
+    # AS => []
+
+    drop drop drop
+    # OS => [a, b, x, y]
+    # AS => []
+
+    movup.3
+    # OS => [x, a, b, y]
+
+    mul
+    # OS => [x * a, b, y]
+
+    swap.2
+    # OS => [b, y, x * a]
+
+    mul
+    # OS => [b * y, x * a]
+
+    add
+    # OS => [result]
+    
+    debug.stack
+
+    push.STORAGE_SLOT
+    # [index, result]
+
+    exec.account::set_item
+    # => []
+
+    exec.sys::truncate_stack
+    # => []
+end
